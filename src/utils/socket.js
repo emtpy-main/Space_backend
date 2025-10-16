@@ -13,7 +13,7 @@ const initializeSocket = (server) => {
   });
 
   const emailToSocketIdMap = new Map();
-const socketIdToEmailMap = new Map();
+  const socketIdToEmailMap = new Map();
 
   io.on("connection", (socket) => {
     console.log(`Socket connected: ${socket.id}`);
@@ -104,8 +104,21 @@ const socketIdToEmailMap = new Map();
       const targetSocketId = emailToSocketIdMap.get(emailId);
       socket.to(targetSocketId).emit('call-accepted', { ans });
     });
-
+    socket.on('call-ended', (data) => {
+      const { emailId } = data || {};
+      const fromUserId = socketIdToEmailMap.get(socket.id);
+      const targetSocketId = emailToSocketIdMap.get(emailId);
+      if (targetSocketId) {
+        io.to(targetSocketId).emit('call-ended', { from: fromUserId });
+      }
+    });
     socket.on("disconnect", () => {
+      const email = socketIdToEmailMap.get(socket.id);
+      if (email) {
+        emailToSocketIdMap.delete(email);
+        socketIdToEmailMap.delete(socket.id);
+        io.emit("user-left", { email });
+      }
       console.log(`Socket ${socket.id} disconnected`);
     });
   });
